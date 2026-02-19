@@ -5,9 +5,10 @@ from .Card import Card
 
 class Player:
     def __init__(self, name: str, chips: int):
-        self.name = name
-        self.chips = chips
+        self.name: str = name
+        self.chips: int = chips
         self.hand: tuple[Card, Card] = (None, None)  # Players start with no cards in hand
+        self.ready: bool = True  # Assume players are ready by default, can be used to manage player states in the game
         
     def receive_cards(self, card1: Card, card2: Card):
         """Give the player their two hole cards."""

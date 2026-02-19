@@ -14,7 +14,7 @@ class Deck:
         import random
         random.shuffle(self.cards)
 
-    def deal(self):
+    def draw_card(self):
         """Deals (removes and returns) the top card from the deck."""
         if len(self.cards) <= 0:
             raise ValueError("Not enough cards in the deck to deal")

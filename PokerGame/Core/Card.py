@@ -14,7 +14,7 @@ class Card:
                 try:
                     rank_str = str(int(r))
                 except Exception:
-                    rank_str = name.lower()
+                    rank_str = name.lower().capitalize()
         else:
             rank_str = str(r)
 
