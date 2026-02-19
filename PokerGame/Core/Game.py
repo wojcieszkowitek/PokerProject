@@ -4,6 +4,7 @@ from .Player import Player
 from enum import Enum
 
 # TODO: Implement the logic for pre-flop, flop, turn, and river rounds, including betting and hand evaluation.
+# TODO: Implemet dealer position and blinds (small blind, big blind) logic.
 
 class Game:
     def __init__(self):
