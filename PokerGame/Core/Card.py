@@ -1,4 +1,4 @@
-from .CardData import Suit, Rank
+from Core.CardData import Suit, Rank
 
 class Card:
     def __init__(self, suit, rank):

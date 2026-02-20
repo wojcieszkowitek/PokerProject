@@ -24,12 +24,12 @@ game.dealCards()
 game.dealBlinds()
 
 print("Players and their hole cards:")
-for player in game.players_in_round:
+for player in game.playersInRound:
     print(f"Player: {player.name}, Cards: {player.hand}")
     
 game.dealCommunityCards(5)
-print (f"Community Cards: {game.community_cards}")
+print (f"Community Cards: {game.communityCards}")
 
-for player in game.players_in_round:
-    hand_rank, tiebreaker = HandChecker.evaluate_hand(player.hand, game.community_cards)
+for player in game.playersInRound:
+    hand_rank, tiebreaker = HandChecker.evaluate_hand(player.hand, game.communityCards)
     print(f"{player.name} has a {hand_rank.name} with tiebreaker {tiebreaker}")

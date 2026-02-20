@@ -1,5 +1,4 @@
-from .Deck import Deck
-from .Card import Card
+from Core.Card import Card
 
 class Player:
     def __init__(self, name: str, chips: int):

@@ -1,5 +1,5 @@
-from .Card import Card
-from .CardData import Suit, Rank
+from Core.Card import Card
+from Core.CardData import Suit, Rank
 
 class Deck:
     def __init__(self, shuffle: bool = True):
