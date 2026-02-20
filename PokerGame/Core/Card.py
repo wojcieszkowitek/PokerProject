@@ -1,3 +1,5 @@
+from .CardData import Suit, Rank
+
 class Card:
     def __init__(self, suit, rank):
         self.suit = suit
@@ -5,7 +7,7 @@ class Card:
     
     def __str__(self):
         # Rank: print face names (jack, queen, king, ace) or numeric value for 2-10
-        r = self.rank
+        r: Rank = self.rank
         if hasattr(r, "name"):
             name = r.name
             if name in ("JACK", "QUEEN", "KING", "ACE"):
@@ -19,7 +21,7 @@ class Card:
             rank_str = str(r)
 
         # Suit: use enum member name (clubs, hearts, ...)
-        s = self.suit
+        s: Suit = self.suit
         suit_str = s.name.lower() if hasattr(s, "name") else str(s)
 
         return f"{rank_str} of {suit_str}"

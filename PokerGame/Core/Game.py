@@ -47,7 +47,7 @@ class Game:
     
     def betsAreEqual(self):
         """Check if all players have equal bets in the current round."""
-        if not self.players_in_round:
+        if not self.players_in_round or not self.current_bets:
             raise ValueError("No players in the game to compare bets.")
         
         if len(self.current_bets) < 2:
@@ -96,8 +96,6 @@ class Game:
         # Update current bets and total bets for the player
         self.current_bets[player] = self.current_bets.get(player, 0) + bet_amount
         
-        self.pot += bet_amount  # Add the bet to the pot
-    
     def dealCards(self):
         """deal player hands"""
         if not self.players_in_round:

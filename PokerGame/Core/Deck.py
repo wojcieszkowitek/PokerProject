@@ -21,7 +21,7 @@ class Deck:
         
         return self.cards.pop(0)  # Remove and return the top card
     
-    def deal_multiple(self, count: int):
+    def draw_multiple(self, count: int):
         """Deals multiple cards from the top of the deck."""
         if count > len(self.cards):
             raise ValueError(f"Not enough cards in the deck to deal {count} cards")

@@ -14,6 +14,7 @@ class HandRank(IntEnum):
     STRAIGHT_FLUSH = 9
     ROYAL_FLUSH = 10
 
+# TODO: refactor the whole functon making it more modular and easier to read, maybe even split into multiple functions for each hand type
 
 class HandChecker:
     @staticmethod

@@ -7,7 +7,11 @@ game = Game()
 players = [
     Player("Alice", 1000),
     Player("Bob", 1000),
-    Player("Charlie", 1000)
+    Player("Charlie", 1000),
+    Player("David", 1000),
+    Player("Eve", 1000),
+    
+    
 ]
 
 players[0].ready = False

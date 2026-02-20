@@ -1,8 +1,6 @@
 from .Deck import Deck
 from .Card import Card
 
-# TODO: implement checking what does every player has based on his hand and the community cards like pair, two pair, three of a kind, straight, flush, full house, four of a kind, straight flush, royal flush
-
 class Player:
     def __init__(self, name: str, chips: int):
         self.name: str = name

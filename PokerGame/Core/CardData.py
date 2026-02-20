@@ -7,7 +7,6 @@ class Suit(IntEnum):
 	CLUBS = 3
 	SPADES = 4
 
-
 class Rank(IntEnum):
 	TWO = 2
 	THREE = 3
@@ -25,4 +24,3 @@ class Rank(IntEnum):
 
 
 __all__ = ["Suit", "Rank"]
-
