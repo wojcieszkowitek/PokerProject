@@ -22,15 +22,15 @@ class GameManager:
         else:
             raise TypeError(f"Round must be set to a GamePhase enum member or an integer, got {type(value)}")
     
-    def startNewGame(self):
+    def start_new_game(self):
         """Start a new game by resetting the game state and setting the round to PRE_FLOP."""
-        self.game.newGame()  # Reset the game state for a new game
+        self.game.new_game()  # Reset the game state for a new game
         self.round = GamePhase.PRE_FLOP  # Start with the pre-flop phase
         
-    def playPreFlop(self):
+    def play_pre_flop(self):
         """Handle the pre-flop phase of the game."""
-        self.game.dealCards()  # Deal hole cards to players
-        self.game.dealBlinds()  # Handle blinds for the pre-flop phase
+        self.game.deal_cards()  # Deal hole cards to players
+        self.game.deal_blinds()  # Handle blinds for the pre-flop phase
         
 
 class GamePhase(Enum):
