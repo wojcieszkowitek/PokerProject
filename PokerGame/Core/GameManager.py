@@ -31,7 +31,6 @@ class GameManager:
         """Handle the pre-flop phase of the game."""
         self.game.deal_cards()  # Deal hole cards to players
         self.game.deal_blinds()  # Handle blinds for the pre-flop phase
-        
 
 class GamePhase(Enum):
     WAITING_FOR_PLAYERS = 0
