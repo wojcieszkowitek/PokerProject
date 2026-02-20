@@ -25,22 +25,26 @@ class Game:
         """Return a list of players who are ready to play."""
         return [player for player in self.players if player.ready]
     
+    def get_player_at_offset(self, offset: int) -> Player:
+        """Get a player at a given offset from the dealer position."""
+        if not self.players_in_round:
+            raise ValueError("No active players in the round.")
+        return self.players_in_round[(self.dealer_position + offset) % len(self.players_in_round)]
+    
     @property
     def small_blind_player_index(self) -> int:
         """Return the player index in the players_in_round who is currently posting the small blind."""
-        if not self.players_in_round:
-            raise ValueError("No active players in the round to determine small blind.")
-        
         # return the index of the player who is posting the small blind (the player immediately to the left of the dealer)
-        return (self.dealer_position + 1) % len(self.players_in_round)
+        return self.players_in_round.index(self.get_player_at_offset(1))
     
     def utg_player_index(self) -> int:
         """Return the player index in the players_in_round of who is currently in the Under the Gun (UTG) position."""
-        if not self.players_in_round:
-            raise ValueError("No active players in the round to determine UTG.")
-        
+        if len(self.players_in_round) == 2:
+            # In a heads-up game, the dealer is also the small blind and the UTG player is the big blind
+            return self.players_in_round.index(self.get_player_at_offset(2))
+            
         # return the index of the player who is in the UTG position (the player immediately to the left of the big blind)
-        return (self.dealer_position + 3) % len(self.players_in_round)
+        return self.players_in_round.index(self.get_player_at_offset(3))
     
     def bets_are_equal(self):
         """Check if all players have equal bets in the current round."""
@@ -62,6 +66,7 @@ class Game:
         self.deck = Deck()  # Reset the deck for a new game
         self.current_bets.clear()
         self.community_cards.clear()
+        self.pot = 0
         
         self.players_in_round = self.ready_players  # Only players who are ready can participate in the new game
         if len(self.players_in_round) < 2:
@@ -115,8 +120,8 @@ class Game:
         if len(self.players_in_round) < 2:
             raise ValueError("Not enough players to post blinds.")
         
-        small_blind_player = self.players_in_round[(self.dealer_position + 1) % len(self.players_in_round)]
-        big_blind_player = self.players_in_round[(self.dealer_position + 2) % len(self.players_in_round)]
+        small_blind_player = self.get_player_at_offset(1)
+        big_blind_player = self.get_player_at_offset(2)
         
         self.add_bet(small_blind_player, self.small_blind)
         self.add_bet(big_blind_player, self.big_blind)
@@ -127,5 +132,6 @@ class Game:
             raise ValueError(f"{player.name} is not currently active in the round and cannot fold.")
         
         self.players_in_round.remove(player)  # Remove the player from the active players in the round
+        self.current_bets.pop(player, None)  # Remove the player's bet from the current bets
     
 __all__ = ["Game"]
