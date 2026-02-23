@@ -26,11 +26,6 @@ class GameManager:
         """Start a new game by resetting the game state and setting the round to PRE_FLOP."""
         self.game.new_game()  # Reset the game state for a new game
         self.round = GamePhase.PRE_FLOP  # Start with the pre-flop phase
-        
-    def play_pre_flop(self):
-        """Handle the pre-flop phase of the game."""
-        self.game.deal_cards()  # Deal hole cards to players
-        self.game.deal_blinds()  # Handle blinds for the pre-flop phase
 
 class GamePhase(Enum):
     WAITING_FOR_PLAYERS = 0
