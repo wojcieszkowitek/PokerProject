@@ -24,19 +24,19 @@ class Game:
     def ready_players(self):
         """Return a list of players who are ready to play."""
         return [player for player in self.players if player.ready]
-    
-    def get_player_at_offset(self, offset: int) -> Player:
-        """Get a player at a given offset from the dealer position."""
-        if not self.players_in_round:
-            raise ValueError("No active players in the round.")
-        return self.players_in_round[(self.dealer_position + offset) % len(self.players_in_round)]
-    
+
     @property
     def small_blind_player_index(self) -> int:
         """Return the player index in the players_in_round who is currently posting the small blind."""
         # return the index of the player who is posting the small blind (the player immediately to the left of the dealer)
         return self.players_in_round.index(self.get_player_at_offset(1))
     
+    def get_player_at_offset(self, offset: int) -> Player:
+        """Get a player at a given offset from the dealer position."""
+        if not self.players_in_round:
+            raise ValueError("No active players in the round.")
+        return self.players_in_round[(self.dealer_position + offset) % len(self.players_in_round)]
+
     def utg_player_index(self) -> int:
         """Return the player index in the players_in_round of who is currently in the Under the Gun (UTG) position."""
         if len(self.players_in_round) == 2:
