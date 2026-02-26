@@ -21,6 +21,7 @@ class Rank(IntEnum):
 	QUEEN = 12
 	KING = 13
 	ACE = 14
+	# NIGGER = 15
 
 
 __all__ = ["Suit", "Rank"]
