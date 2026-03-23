@@ -1,203 +1,289 @@
 from Core.Deck import Deck
 from Core.Card import Card
 from Core.Player import Player
+from Core.HandChecker import HandChecker
+
 
 class Game:
     """
     Represents a game of poker.
     """
     def __init__(self, small_blind: int = 10, big_blind: int = 20):
-        """
-        Initialize a new game of poker with the given blinds.
-        
-        Args:
-            small_blind (int): The amount of chips for the small blind.
-            big_blind (int): The amount of chips for the big blind.
-        """
-        self.players: list[Player] = []  # The list of all players in the game
-        self.players_in_game: list[Player] = []  # Track players still active in the current round
-        self.folded_players: list[Player] = []  # Track players who have folded their hand
-        
-        self.deck: Deck = Deck()  # The deck of cards for the game
-        
-        self.pot: int = 0  # The total amount of chips in the pot
-        self.current_bets: dict[Player, int] = {}  # The current bets for each player
-        
-        self.community_cards: list[Card] = []  # The community cards on the table
-        
-        self.dealer_position: int = -1  # The index of the dealer in the players list
-        
+        self.players: list[Player] = []
+        self.players_in_game: list[Player] = []
+        self.folded_players: list[Player] = []
+
+        self.deck: Deck = Deck()
+
+        self.pot: int = 0
+        self.current_bets: dict[Player, int] = {}
+
+        self.total_contributions: dict[Player, int] = {}
+
+        self.all_in_players: list[Player] = []
+
+        self.side_pots: list[dict] = []
+
+        self.community_cards: list[Card] = []
+        self.dealer_position: int = -1
         self.small_blind: int = small_blind
         self.big_blind: int = big_blind
 
+    # ------------------------------------------------------------------
+    # Properties
+    # ------------------------------------------------------------------
+
     @property
     def players_in_round(self) -> list[Player]:
-        """
-        Return a list of players who are still active in the current round.
-        """
         return [p for p in self.players_in_game if p not in self.folded_players]
-    
+
     @property
     def ready_players(self) -> list[Player]:
-        """
-        Return a list of players who are ready to play.
-        """
         return [player for player in self.players if player.ready]
 
     @property
     def small_blind_player_index(self) -> int:
-        """
-        Return the player index in the players_in_round who is currently posting the small blind.
-        """
-        # return the index of the player who is posting the small blind (the player immediately to the left of the dealer)
         return self.players_in_round.index(self.get_player_at_offset(1))
-    
-    def get_player_at_offset(self, offset: int) -> Player:
-        """
-        Return the player at the given offset from the dealer.
-        
-        Args:
-            offset (int): The offset from the dealer position.
-        
-        Returns:
-            Player: The player at the given offset.
-        """
-        if not self.players_in_game:
-            raise ValueError("No active players in the game.")
-        return self.game.players_in_game[(self.dealer_position + offset) % len(self.game.players_in_game)]
 
     @property
     def utg_player_index(self) -> int:
-        """
-        Return the player index in the players_in_round of who is currently in the Under the Gun (UTG) position.
-        """
         if len(self.players_in_round) == 2:
-            # In a heads-up game, the dealer is also the small blind and the UTG player is the big blind
             return self.players_in_round.index(self.get_player_at_offset(2))
-            
-        # return the index of the player who is in the UTG position (the player immediately to the left of the big blind)
         return self.players_in_round.index(self.get_player_at_offset(3))
-    
+
+    # ------------------------------------------------------------------
+    # Hand evaluation
+    # ------------------------------------------------------------------
+
+    def check_hands(self) -> list[tuple[Player, tuple]]:
+        return [
+            (player, HandChecker.evaluate_hand(player.hand, self.community_cards))
+            for player in self.players_in_round
+        ]
+
+    def get_strongest_hand(self) -> list[tuple[Player, tuple]]:
+        """
+        Return all players (and their evaluations) that share the best hand
+        among players still active in the round.
+        Multiple entries are returned on a draw.
+        """
+        hands = self.check_hands()
+        best_eval = max(evaluation for _, evaluation in hands)
+        return [(player, evaluation) for player, evaluation in hands if evaluation == best_eval]
+
+    # ------------------------------------------------------------------
+    # Pot calculation
+    # ------------------------------------------------------------------
+
+    def calculate_pots(self) -> list[dict]:
+        """
+        Build the list of pots from total_contributions.
+
+        Algorithm:
+          - Work through each all-in level from smallest to largest.
+          - At each level, every player contributes at most `cap` chips
+            to this pot.  All players who contributed are eligible to
+            win it — including the short-stacked all-in player who set
+            the cap.
+          - Whatever is left after all caps form a final pot that only
+            players who are NOT all-in (i.e. full contributors) contest.
+          - If there were no all-ins at all, the entire pot is returned
+            as a single pot open to everyone.
+
+        Returns:
+            list of {"amount": int, "eligible": list[Player]}
+        """
+        all_players = list(self.total_contributions.keys())
+
+        # Work on a mutable copy so we can subtract chip-by-chip per level
+        remaining = dict(self.total_contributions)
+
+        pots: list[dict] = []
+
+        # Sort all-in contribution amounts from smallest (shortest stack) upward
+        all_in_levels = sorted(
+            {remaining[p] for p in self.all_in_players if p in remaining}
+        )
+
+        for cap in all_in_levels:
+            pot_amount = 0
+            eligible: list[Player] = []
+
+            for player in all_players:
+                if remaining.get(player, 0) <= 0:
+                    continue
+                # This player contributes at most `cap` chips to this pot
+                taken = min(remaining[player], cap)
+                pot_amount += taken
+                remaining[player] -= taken
+                eligible.append(player)
+
+            if pot_amount > 0:
+                pots.append({"amount": pot_amount, "eligible": eligible})
+
+            # Reduce the cap for the next level so each pot layer is relative
+            # e.g. levels [50, 100] -> first pot capped at 50 each,
+            # second pot capped at (100-50)=50 each from those remaining.
+            # We achieve this by having already subtracted from `remaining`.
+
+        # Any chips still left after all all-in caps form the last side pot.
+        # Only players who are NOT all-in can win this (they put in the full amount).
+        leftover = sum(remaining.values())
+        if leftover > 0:
+            eligible = [p for p in all_players if p not in self.all_in_players]
+            pots.append({"amount": leftover, "eligible": eligible})
+
+        # No all-ins: single pot, everyone eligible
+        if not pots:
+            pots.append({"amount": self.pot, "eligible": all_players})
+
+        return pots
+
+    # ------------------------------------------------------------------
+    # Showdown
+    # ------------------------------------------------------------------
+
+    def showdown(self):
+        """
+        Distribute the pot(s) to the winner(s).
+
+        For each pot (main + side pots):
+          1. Filter eligible players to those who haven't folded.
+          2. Find the best hand among them.
+          3. Split that pot equally among all players who share the best hand.
+        """
+        self.side_pots = self.calculate_pots()
+
+        for pot in self.side_pots:
+            # Only players still in the hand can win each pot
+            contenders = [p for p in pot["eligible"] if p not in self.folded_players]
+
+            if not contenders:
+                continue
+
+            # Evaluate each contender's hand
+            evaluations = {
+                p: HandChecker.evaluate_hand(p.hand, self.community_cards)
+                for p in contenders
+            }
+
+            best_eval = max(evaluations.values())
+            winners = [p for p, ev in evaluations.items() if ev == best_eval]
+
+            # Split the pot — integer division; remainder chips are lost (standard casino rule)
+            share = pot["amount"] // len(winners)
+            for winner in winners:
+                winner.chips += share
+
+    # ------------------------------------------------------------------
+    # Game lifecycle
+    # ------------------------------------------------------------------
+
     def add_player(self, player: Player):
-        """
-        Add a player to the game.
-        
-        Args:
-            player (Player): The player to add to the game.
-        """
         self.players.append(player)
-        
+
     def new_game(self):
         """
-        Start a new game by resetting the deck, pot, and player states.
+        Reset all state and prepare for a new game.
         """
-        self.deck = Deck()  # Reset the deck for a new game
+        self.deck = Deck()
         self.current_bets.clear()
         self.community_cards.clear()
         self.pot = 0
-        
-        self.players_in_game = self.ready_players  # Only players who are ready can participate in the new game
+
+        self.total_contributions.clear()
+        self.all_in_players.clear()
+        self.side_pots.clear()
+
+        self.players_in_game = self.ready_players
         self.folded_players.clear()
-        
+
         if len(self.players_in_round) < 2:
             raise ValueError("At least 2 players must be ready to start a new game.")
-        
-        self.current_bets = {player: 0 for player in self.players_in_round}  # Reset bets for all players in the round
-        
-        self.dealer_position += 1  # Move the dealer position to the next player for the new game
-        
+
+        self.current_bets = {player: 0 for player in self.players_in_round}
+
+        self.total_contributions = {player: 0 for player in self.players_in_round}
+
+        self.dealer_position += 1
+
     def start_new_round(self):
         """
-        Start a new round by resetting the current bets for all players.
+        Reset per-street bets (but NOT total_contributions — those are cumulative).
         """
-        self.current_bets = {player: 0 for player in self.players_in_round}  # Reset bets for all players in the new round
-    
+        self.current_bets = {player: 0 for player in self.players_in_round}
+
+    # ------------------------------------------------------------------
+    # Betting
+    # ------------------------------------------------------------------
+
     def add_bet(self, player: Player, amount: int):
         """
-        Add a bet for a player and update the pot.
-        
-        Args:
-            player (Player): The player who is placing the bet.
-            amount (int): The amount of chips to bet.
+        Place a bet for a player, capping at their available chips (all-in).
+
+        Changes vs original:
+          - `actual = min(amount, player.chips)` — player can never bet
+            more than they have; excess is silently capped (all-in).
+          - `total_contributions` is updated alongside `current_bets`.
+          - If the player's chips hit 0 after the bet they are added to
+            `all_in_players`.
         """
         if player not in self.players_in_round:
-            raise ValueError(f"{player.name} is not currently active in the round and cannot bet.")
-        
-        bet_amount = player.place_bet(amount)  # This will deduct the chips from the player
-        
-        # Update current bets and total bets for the player
+            raise ValueError(f"{player.name} is not active in the round.")
+
+        actual = min(amount, player.chips)
+        bet_amount = player.place_bet(actual)
+
         self.current_bets[player] = self.current_bets.get(player, 0) + bet_amount
-        
-        self.pot += bet_amount  # Add the bet to the pot
-        
+
+        self.total_contributions[player] = self.total_contributions.get(player, 0) + bet_amount
+        self.pot += bet_amount
+
+        if player.chips == 0 and player not in self.all_in_players:
+            self.all_in_players.append(player)
+
+    # ------------------------------------------------------------------
+    # Dealing
+    # ------------------------------------------------------------------
+
     def deal_cards(self):
-        """
-        Deal player hands.
-        """
         if not self.players_in_round:
-            raise ValueError("No active players in the round to deal cards to.")
-        elif len(self.players_in_round) < 2:
-            raise ValueError("Not enough active players in the round to deal cards.")
-        
+            raise ValueError("No active players to deal to.")
+        if len(self.players_in_round) < 2:
+            raise ValueError("Not enough players to deal.")
+
         for player in self.players_in_round:
-            card1 = self.deck.draw_card()
-            card2 = self.deck.draw_card()
-            
-            player.receive_cards(card1, card2)
-            
+            player.receive_cards(self.deck.draw_card(), self.deck.draw_card())
+
     def deal_community_cards(self, number: int):
-        """
-        Deal community cards to the table.
-        
-        Args:
-            number (int): The number of community cards to deal.
-        """
         if number < 1 or number > 5:
-            raise ValueError("Number of community cards must be between 1 and 5.")
-        elif len(self.community_cards) + number > 5:
-            raise ValueError("Cannot deal more than 5 community cards in total.")
-        
+            raise ValueError("Must deal between 1 and 5 community cards.")
+        if len(self.community_cards) + number > 5:
+            raise ValueError("Cannot exceed 5 community cards.")
+
         for _ in range(number):
-            card = self.deck.draw_card()
-            self.community_cards.append(card)
-        
+            self.community_cards.append(self.deck.draw_card())
+
     def deal_blinds(self):
-        """
-        Handle the posting of blinds by the appropriate players.
-        """
         if len(self.players_in_round) < 2:
             raise ValueError("Not enough players to post blinds.")
-        
-        small_blind_player = self.get_player_at_offset(1)
-        big_blind_player = self.get_player_at_offset(2)
-        
-        self.add_bet(small_blind_player, self.small_blind)
-        self.add_bet(big_blind_player, self.big_blind)
-        
+
+        self.add_bet(self.get_player_at_offset(1), self.small_blind)
+        self.add_bet(self.get_player_at_offset(2), self.big_blind)
+
+    # ------------------------------------------------------------------
+    # Player actions
+    # ------------------------------------------------------------------
+
     def fold_player(self, player: Player):
-        """
-        Handle a player folding their hand.
-        
-        Args:
-            player (Player): The player who is folding their hand.
-        """
         if player not in self.players_in_round:
-            raise ValueError(f"{player.name} is not currently active in the round and cannot fold.")
-        
+            raise ValueError(f"{player.name} is not active in the round.")
         self.folded_players.append(player)
-        
+
     def get_player_at_offset(self, offset: int) -> Player:
-        """
-        Get a player at a given offset from the dealer position.
-        
-        Args:
-            offset (int): The offset from the dealer position.
-        
-        Returns:
-            Player: The player at the given offset.
-        """
         if not self.players_in_round:
             raise ValueError("No active players in the round.")
         return self.players_in_round[(self.dealer_position + offset) % len(self.players_in_round)]
-    
+
+
 __all__ = ["Game"]

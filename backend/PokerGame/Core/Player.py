@@ -31,6 +31,6 @@ class Player:
         return(f"Player: {stats}")
 
     def __repr__(self):
-        return str(self)
+        return f"Player ({self.name}, {self.chips}, {self.hand})"
     
 __all__ = ["Player"]
