@@ -9,11 +9,21 @@ players = [
     {
         "name": "Player 1",
         "player_id": "player1",
-        "chips": 100,
+        "chips": 50,
     },
     {
         "name": "Player 2",
         "player_id": "player2",
+        "chips": 100,
+    },
+    {
+        "name": "Player 3",
+        "player_id": "player3",
+        "chips": 100,
+    },
+    {
+        "name": "Player 4",
+        "player_id": "player4",
         "chips": 100,
     }
 ]

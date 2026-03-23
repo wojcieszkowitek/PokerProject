@@ -39,7 +39,7 @@ class Game:
 
     @property
     def ready_players(self) -> list[Player]:
-        return [player for player in self.players if player.ready]
+        return [player for player in self.players if player.ready and player.chips > 0]
 
     @property
     def small_blind_player_index(self) -> int:
