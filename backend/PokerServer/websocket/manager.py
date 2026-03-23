@@ -31,7 +31,7 @@ class connectionManager:
                 
     async def broadcast_to_room(self, room: str, message: str):
         if room in self.rooms:
-            for playerID, websocket in self.rooms[room].items():
+            for _, websocket in self.rooms[room].items():
                 await websocket.send_text(message)
                 
     async def send_private_message(self, room: str, playerID: str, message: str):
@@ -46,5 +46,6 @@ class connectionManager:
         if room in self.rooms:
             for playerID, websocket in self.rooms[room].items():
                 await websocket.send_json(message)
-            
+
+# create connection manager for importing            
 manager = connectionManager()

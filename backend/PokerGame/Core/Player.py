@@ -1,7 +1,8 @@
 from Core.Card import Card
 
 class Player:
-    def __init__(self, name: str, chips: int):
+    def __init__(self, name: str, player_id: str ,chips: int):
+        self.player_id: str = player_id
         self.name: str = name
         self.chips: int = chips
         self.hand: tuple[Card, Card] = (None, None)  # Players start with no cards in hand
@@ -17,5 +18,19 @@ class Player:
             raise ValueError(f"{self.name} does not have enough chips to bet {amount}.")
         self.chips -= amount
         return amount  # Return the amount bet for adding to the pot
+
+    def __str__(self):
+        stats = {
+            "name": self.name,
+            "player_id": self.player_id,
+            "chips": self.chips,
+            "hand": self.hand,
+            "ready": self.ready
+        }
+        
+        return(f"Player: {stats}")
+
+    def __repr__(self):
+        return str(self)
     
 __all__ = ["Player"]
