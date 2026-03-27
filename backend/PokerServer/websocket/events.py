@@ -41,6 +41,9 @@ async def fold(room: str, playerID: str):
 async def call(room: str, playerID: str):
     await handle_action(room, playerID, PlayerActions.CALL)
     
+async def all_in(room: str, playerID: str):
+    await handle_action(room, playerID, PlayerActions.ALL_IN)
+    
 async def player_joined_room(room: str, playerID: str):
     print(f"game phase: {games[room].round}, {len(games[room].ready_players)} players ready")
     print(f"player {playerID} joined room {room}")

@@ -47,6 +47,9 @@ async def connect_to_table(websocket: WebSocket, table_ID: str):
                 except RuntimeError:
                     print("wrong turn")
                     continue
+                except ValueError:
+                    await manager.send_private_JSON(table_ID, user_ID, {"error": "invalid amount"})
+                    continue
                     
             elif data["action"] == "call":
                 try:
@@ -62,6 +65,13 @@ async def connect_to_table(websocket: WebSocket, table_ID: str):
                     print("wrong turn")
                     continue
             
+            elif data["action"] == "all in":
+                try:
+                    await events.all_in(table_ID, user_ID)
+                except RuntimeError:
+                    print("wrong turn")
+                    continue
+                
             elif data["action"] == "get state":
                 await events.send_player_state(table_ID, user_ID)
                 continue

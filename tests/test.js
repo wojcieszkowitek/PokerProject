@@ -58,6 +58,12 @@ process.stdin.on("data", (data) => {
         }))
     }
 
+    if (message === "all in"){
+        ws.send(JSON.stringify({
+            "action": "all in"
+        }))
+    }
+
     if (message === "get state"){
         ws.send(JSON.stringify({
             "action": "get state"
