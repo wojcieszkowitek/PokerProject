@@ -1,8 +1,7 @@
-from Core.Game import Game
+from PokerGame.Core.Game import Game
+from PokerGame.Core.Player import Player
+from PokerGame.Core.HandChecker import HandChecker
 from enum import Enum
-from Core.Player import Player
-from Core.HandChecker import HandChecker
-
 
 class GameManager:
     """
@@ -16,7 +15,14 @@ class GameManager:
     # ------------------------------------------------------------------
     # Round / phase
     # ------------------------------------------------------------------
-
+    @property
+    def players(self):
+        return self.game.players
+    
+    @property
+    def ready_players(self):
+        return self.game.ready_players
+    
     @property
     def round(self):
         return self._round
@@ -32,6 +38,31 @@ class GameManager:
                 raise ValueError(f"Invalid round value: {value}.")
         else:
             raise TypeError(f"Round must be a GamePhase or int, got {type(value)}")
+    
+    @property
+    def game_state(self) -> dict:
+        state = {
+            "players": [p.player_id for p in self.game.players],
+            "players_in_game": [p.player_id for p in self.game.players_in_game],
+            "folded_players": [p.player_id for p in self.game.folded_players],
+            "current_bets": [(p.player_id, amount) for p, amount in self.game.current_bets.items()],
+            "total_contributions": [(p.player_id, amount) for p, amount in self.game.total_contributions.items()],
+            "all_in_players": [p.player_id for p in self.game.all_in_players],
+            "side_pots": self.game.side_pots,
+            "pot": self.game.pot,
+            "round": self.round.value,
+        }
+
+        # Only include current_player if game is in active round
+        if self.round != GamePhase.WAITING_FOR_PLAYERS and len(self.game.players_in_game) > 0:
+            try:
+                state["current_player"] = self.current_player.player_id
+            except Exception:
+                state["current_player"] = None
+        else:
+            state["current_player"] = None
+
+        return state
 
     # ------------------------------------------------------------------
     # Player helpers
@@ -51,7 +82,12 @@ class GameManager:
         total = len(self.game.players_in_game)
         idx = (self.starting_player_index + self.turn) % total
         return self.game.players_in_game[idx]
-
+    
+    def get_player_by_id(self, player_id: str):
+        for p in self.game.players:
+            if p.player_id == player_id:
+                return p
+    
     # ------------------------------------------------------------------
     # Betting round state
     # ------------------------------------------------------------------
@@ -90,6 +126,7 @@ class GameManager:
     def start_new_game(self):
         self.game.new_game()
         self.round = GamePhase.WAITING_FOR_PLAYERS
+        self.start_game()
 
     def start_game(self):
         if self.round != GamePhase.WAITING_FOR_PLAYERS:
@@ -160,6 +197,12 @@ class GameManager:
 
     def add_player(self, player: Player):
         self.game.add_player(player)
+    
+    def remove_player(self, player: Player):
+        self.game.remove_player(player)
+    
+    def has_player(self, player: Player):
+        return player in self.game.players
 
     # ------------------------------------------------------------------
     # Turn management
@@ -198,23 +241,28 @@ class GameManager:
             raise RuntimeError("Cannot play turn: game is not in a round.")
 
         current_player = self.current_player
+        
+        if current_player in self.game.players_to_remove:
+            self.game.fold_player(current_player)
 
         if action == PlayerActions.BET:
             self.game.add_bet(current_player, amount)
             self.turn = 0
-            self.next_turn()
 
         if action == PlayerActions.CALL:
             call_amount = max(self.game.current_bets.values()) - self.game.current_bets[current_player]
             self.game.add_bet(current_player, call_amount)
-            self.next_turn()
 
         if action == PlayerActions.FOLD:
             self.game.fold_player(current_player)
-            self.next_turn()
+
+        if action == PlayerActions.ALL_IN:
+            self.game.add_bet(current_player, current_player.chips)
 
         if self.is_betting_round_over():
             self.next_round()
+        
+        self.next_turn()
 
 
 # ------------------------------------------------------------------
@@ -234,3 +282,4 @@ class PlayerActions(Enum):
     BET = "BET"
     CALL = "CALL"
     FOLD = "FOLD"
+    ALL_IN = "ALL_IN"

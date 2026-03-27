@@ -1,6 +1,6 @@
 from collections import Counter
 from enum import IntEnum
-from Core.Card import Card
+from PokerGame.Core.Card import Card
 from typing import Iterable, Optional
 
 

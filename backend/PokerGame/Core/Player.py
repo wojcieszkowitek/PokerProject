@@ -1,7 +1,7 @@
-from Core.Card import Card
+from PokerGame.Core.Card import Card
 
 class Player:
-    def __init__(self, name: str, player_id: str ,chips: int):
+    def __init__(self, name: str, player_id: str, chips: int):
         self.player_id: str = player_id
         self.name: str = name
         self.chips: int = chips
@@ -32,5 +32,15 @@ class Player:
 
     def __repr__(self):
         return f"Player ({self.name}, {self.chips}, {self.hand})"
+
+    @property
+    def player_state(self):
+        return {
+            "name": self.name,
+            "player_id": self.player_id,
+            "chips": self.chips,
+            "hand": [card.json for card in self.hand],
+            "ready": self.ready
+        }
     
 __all__ = ["Player"]

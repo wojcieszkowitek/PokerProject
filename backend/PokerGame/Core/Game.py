@@ -1,7 +1,7 @@
-from Core.Deck import Deck
-from Core.Card import Card
-from Core.Player import Player
-from Core.HandChecker import HandChecker
+from PokerGame.Core.Deck import Deck
+from PokerGame.Core.Card import Card
+from PokerGame.Core.Player import Player
+from PokerGame.Core.HandChecker import HandChecker
 
 
 class Game:
@@ -12,6 +12,7 @@ class Game:
         self.players: list[Player] = []
         self.players_in_game: list[Player] = []
         self.folded_players: list[Player] = []
+        self.players_to_remove: list[Player] = []
 
         self.deck: Deck = Deck()
 
@@ -182,6 +183,9 @@ class Game:
     def add_player(self, player: Player):
         self.players.append(player)
 
+    def remove_player(self, player: Player):
+        self.players_to_remove.append(player)
+    
     def new_game(self):
         """
         Reset all state and prepare for a new game.
@@ -194,6 +198,10 @@ class Game:
         self.total_contributions.clear()
         self.all_in_players.clear()
         self.side_pots.clear()
+        
+        for player in self.players_to_remove:
+            self.players.remove(player)
+        self.players_to_remove.clear()
 
         self.players_in_game = self.ready_players
         self.folded_players.clear()

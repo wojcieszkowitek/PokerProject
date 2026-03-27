@@ -1,9 +1,9 @@
-from Core.CardData import Suit, Rank
+from PokerGame.Core.CardData import Suit, Rank
 
 class Card:
     def __init__(self, suit, rank):
-        self.suit = suit
-        self.rank = rank
+        self.suit: Suit = suit
+        self.rank: Rank = rank
     
     def __str__(self):
         # Rank: print face names (jack, queen, king, ace) or numeric value for 2-10
@@ -28,5 +28,12 @@ class Card:
 
     def __repr__(self):
         return self.__str__()
+    
+    @property
+    def json(self):
+        return {
+            "suit": self.suit.value,
+            "rank": self.rank.value
+        }
 
 __all__ = ["Card"]

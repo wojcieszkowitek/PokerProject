@@ -1,7 +1,7 @@
 from .CardData import Suit, Rank
 from .Deck import Deck
 from .HandChecker import HandChecker, HandRank
-from .GameManager import GameManager, GamePhase
+from .GameManager import GameManager, GamePhase, PlayerActions
 from .Player import Player
 
 __all__ = [
@@ -12,5 +12,6 @@ __all__ = [
     "HandRank",
     "GameManager",
     "Player",
-    "GamePhase"
+    "GamePhase",
+    "PlayerActions",
     ]
