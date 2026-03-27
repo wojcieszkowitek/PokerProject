@@ -42,6 +42,10 @@ class GameManager:
     @property
     def game_state(self) -> dict:
         state = {
+            "blinds": {
+                "small_blind": self.game.small_blind,
+                "big_blind": self.game.big_blind
+            },
             "players": [p.player_id for p in self.game.players],
             "players_in_game": [p.player_id for p in self.game.players_in_game],
             "folded_players": [p.player_id for p in self.game.folded_players],
