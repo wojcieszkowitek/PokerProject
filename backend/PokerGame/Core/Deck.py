@@ -3,7 +3,7 @@ from PokerGame.Core.CardData import Suit, Rank
 
 class Deck:
     def __init__(self, shuffle: bool = True):
-        self.cards = []
+        self.cards: list[Card] = []
         self.reset()  # Initialize the deck with a full set of cards
         
         if shuffle:
