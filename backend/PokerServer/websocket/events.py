@@ -54,7 +54,6 @@ async def player_joined_room(room: str, playerID: str):
     # add player to game manager
     games[room].add_player(Player(playerID, playerID, 1000))
     
-    
     if games[room].round == GamePhase.WAITING_FOR_PLAYERS and len(games[room].ready_players) >= 2:
         print(f"starting game: {room}")
         games[room].start_new_game()

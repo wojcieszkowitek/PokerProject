@@ -37,6 +37,7 @@ async def connect_to_table(websocket: WebSocket, table_ID: str):
                 await manager.send_private_JSON(table_ID, user_ID, {"error": "invalid json"})
                 continue
             
+            # -----ACTION AND MESSAGE HANDLING -----
             if not data.get("action"):
                 await manager.send_private_JSON(table_ID, user_ID, {"error": "action has to be specified"})
                 continue
@@ -83,3 +84,7 @@ async def connect_to_table(websocket: WebSocket, table_ID: str):
     except WebSocketDisconnect:
         manager.disconnect(table_ID, user_ID)
         await events.player_disconected(table_ID, user_ID)
+    
+    # except RuntimeError:
+    #     manager.disconnect
+    #     await events.player_disconected(table_ID, user_ID)
