@@ -39,8 +39,8 @@ async def handle_action(room: str, playerID: str, action: PlayerActions, amount:
         event_data["amount"] = amount
 
     await manager.broadcast_JSON_to_room(room, event_data)
-
     await broadcast_game_state(room)
+
     await ask_to_play_turn(room)
 
 # Wrapper functions (API stays clean)

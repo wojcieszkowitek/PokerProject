@@ -2,7 +2,6 @@ from fastapi import WebSocket
 from PokerGame.Core import GameManager
 from typing import Dict, Optional, Union
 
-
 class ConnectionManager:
     def __init__(self):
         # Dictionary of rooms
@@ -57,7 +56,6 @@ class ConnectionManager:
             if playerID in players_dict:
                 return room_data["gameManager"]
         return None
-
 
 # create connection manager for importing
 manager = ConnectionManager()
