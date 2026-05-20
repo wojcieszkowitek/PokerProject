@@ -1,138 +1,124 @@
 from typing import Optional
 from PokerServer.websocket.manager import manager
-from PokerGame.Core import PlayerActions, GamePhase, Player
-from backend.PokerGame.Core import GameManager
+from PokerGame.Core import PlayerActions, GamePhase, Player, GameManager
 
-# Access GameManager instances through the manager
-# games = manager.games # Removed this line
 
-def get_game_manager(room: str) -> Optional[GameManager]:
-    if room in manager.rooms:
-        return manager.rooms[room]['gameManager']
-    return None
+def get_game(room: str) -> Optional[GameManager]:
+    return manager.get_game(room)
 
-async def handle_action(room: str, playerID: str, action: PlayerActions, amount: int = None):
-    gameManager = get_game_manager(room)
-    if not gameManager:
-        # This should ideally not happen if connect() is called first
-        raise RuntimeError(f"Game manager not found for room {room}")
-        
-    player = gameManager.current_player
 
-    if player.player_id != playerID:
-        await manager.send_private_JSON(room, playerID, {"error": "Not your turn"})
-        raise RuntimeError("Not your turn")
+# ------------------------------------------------------------------ actions
 
-    # Execute action
+
+async def handle_action(room: str, player_id: str, action: PlayerActions, amount: int = None):
+    game = get_game(room)
+    if not game:
+        raise RuntimeError(f"game manager not found for room {room}")
+
+    if game.current_player.player_id != player_id:
+        await manager.send_private_JSON(room, player_id, {"error": "not your turn"})
+        raise RuntimeError("not your turn")
+
     if action == PlayerActions.BET:
-        gameManager.play_turn(action, amount=amount)
+        game.play_turn(action, amount=amount)
     else:
-        gameManager.play_turn(action)
+        game.play_turn(action)
 
-    # Broadcast event
-    event_data = {
-        "event": action.name.lower(),
-        "playerID": player.player_id
-    }
-
+    event = {"event": action.name.lower(), "playerID": player_id}
     if amount is not None:
-        event_data["amount"] = amount
+        event["amount"] = amount
 
-    await manager.broadcast_JSON_to_room(room, event_data)
+    await manager.broadcast_JSON_to_room(room, event)
     await broadcast_game_state(room)
-
     await ask_to_play_turn(room)
 
-# Wrapper functions (API stays clean)
 
-async def bet(room: str, amount: int, playerID: str):
-    await handle_action(room, playerID, PlayerActions.BET, amount)
+async def bet(room: str, amount: int, player_id: str):
+    await handle_action(room, player_id, PlayerActions.BET, amount)
 
-async def fold(room: str, playerID: str):
-    await handle_action(room, playerID, PlayerActions.FOLD)
+async def fold(room: str, player_id: str):
+    await handle_action(room, player_id, PlayerActions.FOLD)
 
-async def call(room: str, playerID: str):
-    await handle_action(room, playerID, PlayerActions.CALL)
-    
-async def all_in(room: str, playerID: str):
-    await handle_action(room, playerID, PlayerActions.ALL_IN)
-    
-async def player_joined_room(room: str, playerID: str):
-    gameManager = get_game_manager(room)
-    if not gameManager:
-        raise RuntimeError(f"Game manager not found for room {room} when player joined")
+async def call(room: str, player_id: str):
+    await handle_action(room, player_id, PlayerActions.CALL)
 
-    print(f"game phase: {gameManager.round}, {len(gameManager.ready_players)} players ready")
-    print(f"player {playerID} joined room {room}")
-    
-    await manager.broadcast_JSON_to_room(room, {"event": "player joined", "playerID": playerID})
-    await broadcast_game_state_to_player(room, playerID)
-    
-    # add player to game manager
-    gameManager.add_player(Player(playerID, playerID, 1000))
-    
-    # Check if game should start only if it's still in WAITING_FOR_PLAYERS phase
-    if gameManager.round == GamePhase.WAITING_FOR_PLAYERS and len(gameManager.ready_players) >= 2:
-        print(f"starting game: {room}")
-        gameManager.start_new_game()
-        
+async def all_in(room: str, player_id: str):
+    await handle_action(room, player_id, PlayerActions.ALL_IN)
+
+
+# ------------------------------------------------------------------ events
+
+
+async def player_joined_room(room: str, player_id: str):
+    game = get_game(room)
+    if not game:
+        raise RuntimeError(f"game manager not found for room {room}")
+
+    await manager.broadcast_JSON_to_room(room, {"event": "player joined", "playerID": player_id})
+    await broadcast_game_state_to_player(room, player_id)
+
+    game.add_player(Player(player_id, player_id, 1000))
+    print(f"player {player_id} joined room {room} | phase: {game.round} | ready: {len(game.ready_players)}")
+
+    if game.round == GamePhase.WAITING_FOR_PLAYERS and len(game.ready_players) >= 2:
+        game.start_new_game()
         await manager.broadcast_JSON_to_room(room, {"event": "game started"})
         await ask_to_play_turn(room)
 
-async def player_disconected(room: str, playerID: str):
-    # It's important to also remove the player from the game manager if they disconnect
-    gameManager = get_gameManager_from_playerID(room) # Use get_gameManager_from_playerID helper
-    if gameManager:
-        try:
-            # Assuming there's a method to remove a player from the game manager
-            # If not, this part might need adjustment based on GameManager's actual methods
-            gameManager.remove_player(playerID)
-            print(f"Removed player {playerID} from game manager in room {room}")
-        except Exception as e:
-            print(f"Error removing player {playerID} from game manager in room {room}: {e}")
 
-    await manager.broadcast_JSON_to_room(room, {"event": "player left", "playerID": playerID})
-    
+async def player_disconected(room: str, player_id: str):
+    game = get_game(room)
+    if game:
+        try:
+            game.remove_player(player_id)
+            print(f"removed player {player_id} from game in room {room}")
+        except Exception as e:
+            print(f"error removing player {player_id} from room {room}: {e}")
+
+    await manager.broadcast_JSON_to_room(room, {"event": "player left", "playerID": player_id})
+
+
+# ---------------------------------------------------------------- broadcasts
+
+
 async def ask_to_play_turn(room: str):
-    gameManager = get_game_manager(room)
-    if not gameManager:
-        print(f"Warning: Game manager not found for room {room} when asking for turn.")
+    game = get_game(room)
+    if not game:
+        print(f"warning: no game manager for room {room} when asking for turn")
         return
 
-    # Ensure there is a current player before accessing their ID
-    if gameManager.current_player:
-        playerID = gameManager.current_player.player_id
-        await manager.broadcast_JSON_to_room(room, {"event": "turn", "playerID": playerID})
-    else:
-        print(f"No current player to ask for turn in room {room}.")
+    if not game.current_player:
+        print(f"warning: no current player in room {room}")
+        return
+
+    await manager.broadcast_JSON_to_room(room, {"event": "turn", "playerID": game.current_player.player_id})
+
 
 async def broadcast_game_state(room: str):
-    gameManager = get_gameManager_from_playerID(room)
-    if gameManager:
-        await manager.broadcast_JSON_to_room(room, gameManager.game_state)
-    else:
-        print(f"Warning: Game manager not found for room {room} when broadcasting game state.")
-    
-async def broadcast_game_state_to_player(room: str, playerID: str):
-    gameManager = get_gameManager_from_playerID(room)
-    if gameManager:
-        await manager.send_private_JSON(room, playerID, gameManager.game_state)
-    else:
-        print(f"Warning: Game manager not found for room {room} when broadcasting game state to player {playerID}.")
+    game = get_game(room)
+    if not game:
+        print(f"warning: no game manager for room {room} when broadcasting state")
+        return
+    await manager.broadcast_JSON_to_room(room, game.game_state)
 
-async def send_player_state(room: str, playerID: str):
-    gameManager = get_gameManager_from_playerID(room)
-    if gameManager:
-        player = gameManager.get_player_by_id(playerID)
-        if player:
-            await manager.send_private_JSON(room, playerID, player.player_state)
-        else:
-            await manager.send_private_JSON(room, playerID, {"error": "Player not found in game"})
-    else:
-        print(f"Warning: Game manager not found for room {room} when sending player state to {playerID}.")
 
-# Helper to get GameManager from room, used by player_disconected and others
-def get_gameManager_from_playerID(room: str) -> Optional[GameManager]:
-    if room in manager.rooms:
-        return manager.rooms[room]['gameManager']
-    return None
+async def broadcast_game_state_to_player(room: str, player_id: str):
+    game = get_game(room)
+    if not game:
+        print(f"warning: no game manager for room {room} when sending state to {player_id}")
+        return
+    await manager.send_private_JSON(room, player_id, game.game_state)
+
+
+async def send_player_state(room: str, player_id: str):
+    game = get_game(room)
+    if not game:
+        print(f"warning: no game manager for room {room} when sending player state to {player_id}")
+        return
+
+    player = game.get_player_by_id(player_id)
+    if not player:
+        await manager.send_private_JSON(room, player_id, {"error": "player not found"})
+        return
+
+    await manager.send_private_JSON(room, player_id, player.player_state)
